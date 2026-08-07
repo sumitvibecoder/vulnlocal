@@ -4,7 +4,15 @@
 
 Mirrors **official** bulk/JSON feeds only (no HTML scraping). For authorized research on systems you own or have permission to test.
 
-[Credits](CREDITS.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) · MIT License
+[Credits](CREDITS.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) · [MIT License](LICENSE)
+
+## Screenshots
+
+<img width="3680" height="5790" alt="home_page" src="https://github.com/user-attachments/assets/d9e6485e-53ac-4f1b-8340-4087215f0de0" />
+<img width="3680" height="3570" alt="manage_data" src="https://github.com/user-attachments/assets/904837fa-fa64-4a75-bc7f-1d76f2cba9f9" />
+<img width="3680" height="1716" alt="settings" src="https://github.com/user-attachments/assets/53cbc286-d9cc-411b-8205-f783617d9f04" />
+
+
 
 ## Important limitations
 
