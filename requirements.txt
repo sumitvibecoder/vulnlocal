@@ -2,5 +2,5 @@ flask>=3.0.0
 requests>=2.31.0
 PySocks>=1.7.1
 werkzeug>=3.0.0
-PyYAML>=6.0.0
+PyYAML>=6.0.3
 defusedxml>=0.7.1
