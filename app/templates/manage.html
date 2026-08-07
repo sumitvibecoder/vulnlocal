@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manage — vulnlocal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=22" />
+</head>
+<body>
+  {% include '_nav.html' %}
+
+  <main class="manage-page">
+    {% set schedule = schedule or {} %}
+    <header class="manage-hero">
+      <h1>Manage data</h1>
+      <p>Sync threat feeds into the local DB, then download the offline Nmap NSE package. Configure proxy and feed URLs on <a href="/settings">Settings</a>.</p>
+    </header>
+
+    <section class="manage-grid">
+      <article class="manage-card">
+        <h2>Sync DB</h2>
+        <p class="hint" style="margin-top:0">
+          Incremental sync: uses conditional HTTP (ETag / Last-Modified) and skips re-parsing when feeds are unchanged.
+          Only changed bulletins are fetched from MSRC; NSE DB is re-exported only when something actually updated.
+          First run or empty tables still do a full load.
+        </p>
+        <div class="btn-stack" style="margin-top:0.85rem">
+          <button type="button" class="primary-action" data-action="/api/sync/all">Sync DB</button>
+          <button type="button" id="purge-db-btn" class="danger-action">Purge DB…</button>
+        </div>
+        <p class="hint">
+          Sync DB updates all feeds (including CAPEC, Debian, Ubuntu, OSV, GitHub Advisories, and PoC-in-GitHub).
+          Extra advisories run early in the job. GitHub Advisories load the full github-reviewed set from the advisory-database zip (~34k; matches <a href="https://github.com/advisories" target="_blank" rel="noopener">github.com/advisories</a>).
+        </p>
+        <p class="hint">Purge removes all ingested CVE / Exploit-DB / NVD / MSRC / feed rows from the live database (schema kept). A pre-purge backup is attempted first. Settings and download caches are not deleted.</p>
+
+        <div class="schedule-block" id="schedule-block">
+          <h3>Automatic Sync</h3>
+          <p class="hint" style="margin-top:0">
+            Schedule Sync DB on this machine’s local clock. Disabled by default — enable to run hourly, daily, weekly, monthly, yearly, or once.
+          </p>
+          <label class="settings-check schedule-enable">
+            <input type="checkbox" id="schedule-enabled" {% if schedule.enabled %}checked{% endif %} />
+            Enable scheduled Sync DB
+          </label>
+          <div class="settings-row schedule-row">
+            <label class="settings-field">
+              <span>Start date &amp; time</span>
+              <input type="datetime-local" id="schedule-start" value="{{ (schedule.start_at or '')[:16] }}" />
+            </label>
+            <label class="settings-field">
+              <span>Repeat</span>
+              <select id="schedule-frequency">
+                {% set freq = schedule.frequency or 'daily' %}
+                <option value="hourly" {% if freq == 'hourly' %}selected{% endif %}>Every hour</option>
+                <option value="daily" {% if freq == 'daily' %}selected{% endif %}>Once a day</option>
+                <option value="weekly" {% if freq == 'weekly' %}selected{% endif %}>Once a week</option>
+                <option value="monthly" {% if freq == 'monthly' %}selected{% endif %}>Once a month</option>
+                <option value="yearly" {% if freq == 'yearly' %}selected{% endif %}>Once a year</option>
+                <option value="once" {% if freq == 'once' %}selected{% endif %}>Once (at start time)</option>
+              </select>
+            </label>
+          </div>
+          <div class="btn-stack" style="margin-top:0.65rem">
+            <button type="button" class="primary-action" id="schedule-save-btn">Save schedule</button>
+          </div>
+          <p class="hint" id="schedule-status-line">
+            {% if schedule.enabled %}
+              Next run: <span id="schedule-next">{{ schedule.next_run_at or '—' }}</span>
+              · Last scheduled: <span id="schedule-last">{{ schedule.last_run_at or '—' }}</span>
+            {% else %}
+              Next run: <span id="schedule-next">—</span>
+              · Last scheduled: <span id="schedule-last">{{ schedule.last_run_at or '—' }}</span>
+            {% endif %}
+          </p>
+          <p class="hint" id="schedule-msg" hidden></p>
+        </div>
+
+        <div class="download-block">
+          <h3>Nmap scan downloads</h3>
+          <div class="btn-stack" style="margin-top:0.55rem">
+            <a class="download-btn" href="/download/nse-script.zip">Download Nmap NSE script</a>
+            <a class="download-btn" href="/download/nse-db">Download NSE pack</a>
+          </div>
+          <p class="hint">
+            Offline index is <code>vulnlocal.pack/</code> (plain TSV buckets). The NSE Lua script reads it directly — no <code>sqlite3</code> CLI.
+            Online: <code>nmap -sV --script vulnlocal --script-args vulnlocal.api=http://127.0.0.1:8088 &lt;target&gt;</code> ·
+            Offline: <code>nmap -sV --script vulnlocal --script-args "vulnlocal.db=/path/to/vulnlocal.pack" &lt;target&gt;</code>
+            Sync DB rebuilds <code>nse/db/vulnlocal.pack</code> (includes NVD CPE expansion for version matching).
+          </p>
+        </div>
+      </article>
+
+      <article class="manage-card">
+        <h2>Live status</h2>
+        <p class="hint hint-after-gap" style="margin-top:0">
+          Toggle Sync on/off per data source. Disabled sources are skipped on the next Sync DB / schedule run (local rows are kept).
+          Exploit-DB prefers <a href="https://gitlab.com/exploit-database/exploitdb" target="_blank" rel="noopener">GitLab exploitdb</a>;
+          NVD uses official <a href="https://nvd.nist.gov/vuln/data-feeds#divJson20Feeds" target="_blank" rel="noopener">JSON 2.0 year + modified/recent</a> zips (upsert, no duplicates).
+          When <strong>CVEs</strong> is On, Sync also merges those NVD rows into the CVE table. Turn a source <strong>Off</strong> to skip it on Sync DB.
+        </p>
+        <div id="status-current" class="status-current idle">
+          <span class="dot"></span>
+          <div class="status-body">
+            <div id="status-title" class="status-title">Idle</div>
+            <div id="status-detail" class="status-detail">No job running</div>
+            <div id="status-progress-wrap" class="progress-wrap" hidden>
+              <div class="progress-bar"><span id="status-progress-bar"></span></div>
+              <div id="status-progress-text" class="progress-text"></div>
+            </div>
+            <button type="button" id="stop-job-btn" class="stop-btn" hidden>Stop job</button>
+          </div>
+        </div>
+        {% set sf = sync_feeds or {} %}
+        <dl class="status-meta" id="status-meta">
+          <div class="feed-row" data-feed="cve">
+            <dt>CVEs</dt>
+            <dd class="feed-dd"><span id="count-cves">{{ "{:,}".format(stats.cves) }}</span>
+              <label class="feed-toggle" title="Sync CVE List V5 + merge NVD into CVEs"><input type="checkbox" role="switch" aria-label="Sync cve" data-feed-toggle="cve" {% if sf.get('cve', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('cve', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="nvd">
+            <dt>NVD CVEs</dt>
+            <dd class="feed-dd"><span id="count-nvd">{{ "{:,}".format(stats.nvd_cves or 0) }}</span>
+              <label class="feed-toggle" title="Sync NVD JSON 2.0 feeds"><input type="checkbox" role="switch" aria-label="Sync nvd" data-feed-toggle="nvd" {% if sf.get('nvd', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('nvd', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="edb">
+            <dt>Exploits</dt>
+            <dd class="feed-dd"><span id="count-exploits">{{ "{:,}".format(stats.exploits) }}</span>
+              <label class="feed-toggle" title="Sync Exploit-DB (GitLab)"><input type="checkbox" role="switch" aria-label="Sync edb" data-feed-toggle="edb" {% if sf.get('edb', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('edb', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="cwe">
+            <dt>CWE</dt>
+            <dd class="feed-dd"><span id="count-cwe">{{ "{:,}".format(stats.cwe or 0) }}</span>
+              <label class="feed-toggle" title="Sync CWE"><input type="checkbox" role="switch" aria-label="Sync cwe" data-feed-toggle="cwe" {% if sf.get('cwe', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('cwe', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="cisa">
+            <dt>CISA KEV</dt>
+            <dd class="feed-dd"><span id="count-cisa-kev">{{ "{:,}".format(stats.cisa_kev or 0) }}</span>
+              <label class="feed-toggle" title="Sync CISA KEV"><input type="checkbox" role="switch" aria-label="Sync cisa" data-feed-toggle="cisa" {% if sf.get('cisa', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('cisa', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="msrc">
+            <dt>MSRC CVEs</dt>
+            <dd class="feed-dd"><span id="count-msrc">{{ "{:,}".format(stats.msrc_cves or 0) }}</span>
+              <label class="feed-toggle" title="Sync MSRC"><input type="checkbox" role="switch" aria-label="Sync msrc" data-feed-toggle="msrc" {% if sf.get('msrc', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('msrc', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="nessus">
+            <dt>Nessus plugins</dt>
+            <dd class="feed-dd"><span id="count-nessus">{{ "{:,}".format(stats.nessus_plugins or 0) }}</span>
+              <label class="feed-toggle" title="Sync Nessus"><input type="checkbox" role="switch" aria-label="Sync nessus" data-feed-toggle="nessus" {% if sf.get('nessus', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('nessus', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="metasploit">
+            <dt>Metasploit</dt>
+            <dd class="feed-dd"><span id="count-metasploit">{{ "{:,}".format(stats.metasploit_modules or 0) }}</span>
+              <label class="feed-toggle" title="Sync Metasploit"><input type="checkbox" role="switch" aria-label="Sync metasploit" data-feed-toggle="metasploit" {% if sf.get('metasploit', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('metasploit', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="nuclei">
+            <dt title="CVE-linked and exploit-tagged Nuclei templates only">Nuclei CVE/exploit</dt>
+            <dd class="feed-dd"><span id="count-nuclei">{{ "{:,}".format(stats.nuclei_templates or 0) }}</span>
+              <label class="feed-toggle" title="Sync Nuclei"><input type="checkbox" role="switch" aria-label="Sync nuclei" data-feed-toggle="nuclei" {% if sf.get('nuclei', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('nuclei', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="capec">
+            <dt>CAPEC</dt>
+            <dd class="feed-dd"><span id="count-capec">{{ "{:,}".format(stats.capec or 0) }}</span>
+              <label class="feed-toggle" title="Sync CAPEC"><input type="checkbox" role="switch" aria-label="Sync capec" data-feed-toggle="capec" {% if sf.get('capec', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('capec', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="debian">
+            <dt>Debian CVEs</dt>
+            <dd class="feed-dd"><span id="count-debian">{{ "{:,}".format(stats.debian_cves or 0) }}</span>
+              <label class="feed-toggle" title="Sync Debian"><input type="checkbox" role="switch" aria-label="Sync debian" data-feed-toggle="debian" {% if sf.get('debian', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('debian', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="ubuntu">
+            <dt>Ubuntu CVEs</dt>
+            <dd class="feed-dd"><span id="count-ubuntu">{{ "{:,}".format(stats.ubuntu_cves or 0) }}</span>
+              <label class="feed-toggle" title="Sync Ubuntu"><input type="checkbox" role="switch" aria-label="Sync ubuntu" data-feed-toggle="ubuntu" {% if sf.get('ubuntu', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('ubuntu', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="osv">
+            <dt>OSV</dt>
+            <dd class="feed-dd"><span id="count-osv">{{ "{:,}".format(stats.osv_vulns or 0) }}</span>
+              <label class="feed-toggle" title="Sync OSV"><input type="checkbox" role="switch" aria-label="Sync osv" data-feed-toggle="osv" {% if sf.get('osv', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('osv', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="ghsa">
+            <dt>GitHub Advisories</dt>
+            <dd class="feed-dd"><span id="count-ghsa">{{ "{:,}".format(stats.ghsa_advisories or 0) }}</span>
+              <label class="feed-toggle" title="Sync GHSA"><input type="checkbox" role="switch" aria-label="Sync ghsa" data-feed-toggle="ghsa" {% if sf.get('ghsa', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('ghsa', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div class="feed-row" data-feed="poc_github">
+            <dt>PoC-in-GitHub</dt>
+            <dd class="feed-dd"><span id="count-poc-github">{{ "{:,}".format(stats.poc_github or 0) }}</span>
+              <label class="feed-toggle" title="Sync PoC-in-GitHub"><input type="checkbox" role="switch" aria-label="Sync poc_github" data-feed-toggle="poc_github" {% if sf.get('poc_github', True) %}checked{% endif %} /><span class="switch" aria-hidden="true"></span><span class="switch-label">{% if sf.get('poc_github', True) %}On{% else %}Off{% endif %}</span></label>
+            </dd>
+          </div>
+          <div><dt>CVE products</dt><dd id="count-products">{{ "{:,}".format(stats.cve_products or 0) }}</dd></div>
+          <div><dt>CVE CPEs</dt><dd id="count-cpes">{{ "{:,}".format(stats.cve_cpes or 0) }}</dd></div>
+          <div><dt>Last sync</dt><dd id="meta-last-sync">{{ stats.last_sync or '—' }}</dd></div>
+          <div><dt>Next scheduled</dt><dd id="meta-next-schedule">{{ schedule.next_run_at if schedule.enabled else '—' }}</dd></div>
+        </dl>
+        <p class="hint" id="feed-toggle-msg" hidden></p>
+      </article>
+    </section>
+
+    <section class="manage-card backup-card">
+      <h2>Backup &amp; restore</h2>
+      <p class="hint" style="margin-top:0">
+        Snapshots are stored under <code>data/backups/</code> on this machine. A zip includes the SQLite DB plus <code>settings.json</code> when present. Large databases may take a minute. Restore replaces the live database (a pre-restore snapshot is taken first). Stop any Sync job before restoring.
+      </p>
+      <div class="backup-actions">
+        <button type="button" id="backup-create-btn" class="primary-action">Create backup</button>
+        <label class="backup-upload-label">
+          <span>Restore from file…</span>
+          <input type="file" id="backup-upload-input" accept=".db,.zip,application/zip,application/octet-stream" hidden />
+        </label>
+      </div>
+      <p id="backup-msg" class="backup-msg" hidden></p>
+      <div class="jobs-table-wrap" style="margin-top:0.85rem">
+        <table class="jobs-table backup-table">
+          <thead>
+            <tr><th>Backup</th><th>Size</th><th>Created</th><th></th></tr>
+          </thead>
+          <tbody id="backup-body">
+            <tr><td colspan="4" class="empty-row">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="manage-card">
+      <div class="jobs-head">
+        <h2>Jobs</h2>
+        <button type="button" id="clear-jobs-btn" class="jobs-clear-btn">Clear</button>
+      </div>
+      <div class="jobs-table-wrap">
+        <table class="jobs-table">
+          <thead>
+            <tr><th>Job</th><th>Status</th><th>Message</th><th>Started</th></tr>
+          </thead>
+          <tbody id="jobs-body">
+            <tr><td colspan="4" class="empty-row">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='manage.js') }}?v=8"></script>
+</body>
+</html>

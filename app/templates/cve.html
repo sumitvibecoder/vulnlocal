@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ cve.cve_id }} — vulnlocal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=18" />
+</head>
+<body>
+  {% include '_nav.html' %}
+
+  <main class="cve-page">
+    <p class="crumb"><a href="/">Home</a> / CVE / <span>{{ cve.cve_id }}</span></p>
+    <header class="cve-hero">
+      <h1>{{ cve.cve_id }}{% if cve.title %}: {{ cve.title }}{% endif %}</h1>
+      <p class="cve-links">
+        <a href="{{ cve.links.cve_org }}" target="_blank" rel="noopener">cve.org</a>
+        <a href="{{ cve.links.nvd }}" target="_blank" rel="noopener">NVD</a>
+      </p>
+    </header>
+
+    <section class="cve-section">
+      <h2>Overview</h2>
+      <dl class="overview-grid">
+        <div>
+          <dt>Severity</dt>
+          <dd class="sev-{{ (cve.severity or 'unknown')|lower }}">
+            {{ cve.severity or '—' }}{% if cve.cvss_score is not none %} (CVSS {{ '%.1f'|format(cve.cvss_score) }}){% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt>CVSS Vector{% if cve.cvss_version %} <span class="muted">v{{ cve.cvss_version }}</span>{% endif %}</dt>
+          <dd class="mono cvss-vector">{{ cve.cvss_vector or '—' }}</dd>
+        </div>
+        <div>
+          <dt>Category</dt>
+          <dd>{{ cve.category or '—' }}</dd>
+        </div>
+        <div>
+          <dt>Exploit Status</dt>
+          <dd>{% if cve.exploit_count %}{{ cve.exploit_status }} ({{ cve.exploit_count }}){% else %}{{ cve.exploit_status }}{% endif %}</dd>
+        </div>
+        <div>
+          <dt>Exploit Type</dt>
+          <dd>
+            {% if cve.exploit_types %}
+              {% for et in cve.exploit_types[:6] %}
+              <span class="badge edb">{{ et }}</span>
+              {% endfor %}
+            {% else %}
+              —
+            {% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt>EPSS Score</dt>
+          <dd>
+            {% if cve.epss and cve.epss.score is not none %}
+              {{ '%.5f'|format(cve.epss.score) }}
+              {% if cve.epss.percentile is not none %}
+              <span class="muted">({{ '%.1f'|format(cve.epss.percentile * 100) }}th percentile)</span>
+              {% endif %}
+              {% if cve.epss.date %}<div class="muted">as of {{ cve.epss.date }}</div>{% endif %}
+            {% else %}
+              —
+              <div class="muted">FIRST.org EPSS unavailable offline</div>
+            {% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt>Publicly disclosed</dt>
+          <dd>
+            {{ cve.publicly_disclosed.status if cve.publicly_disclosed else '—' }}
+            {% if cve.publicly_disclosed and cve.publicly_disclosed.date_public %}
+            <div class="muted">{{ cve.publicly_disclosed.date_public }}</div>
+            {% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt>Exploitability</dt>
+          <dd>
+            {% if cve.exploitability %}
+              {{ cve.exploitability.label }}
+              <div class="muted">
+                AV {{ cve.exploitability.attack_vector }}
+                · AC {{ cve.exploitability.attack_complexity }}
+                · PR {{ cve.exploitability.privileges_required }}
+                · UI {{ cve.exploitability.user_interaction }}
+              </div>
+            {% else %}
+              —
+            {% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt>Published</dt>
+          <dd>{{ (cve.date_published or '—')[:10] }}</dd>
+        </div>
+        <div>
+          <dt>Updated</dt>
+          <dd>{{ (cve.date_updated or '—')[:10] }}</dd>
+        </div>
+        <div>
+          <dt>Assigner</dt>
+          <dd>{{ cve.assigner or '—' }}</dd>
+        </div>
+        <div>
+          <dt>State</dt>
+          <dd>{{ cve.state or '—' }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="cve-section">
+      <h2>Description</h2>
+      <p class="cve-desc">{{ cve.description or 'No description in local database.' }}</p>
+      {% if cve.problem_types %}
+      <div class="problem-types">
+        {% for pt in cve.problem_types %}
+          {% if pt.cwe_id %}
+          <a class="overview-chip cwe-chip" href="{{ pt.url }}" target="_blank" rel="noopener" title="Open {{ pt.cwe_id }} on MITRE">
+            <strong>{{ pt.cwe_id }}</strong>{% if pt.description %} — {{ pt.description }}{% endif %}
+          </a>
+          {% else %}
+          <span class="overview-chip">{{ pt.description }}</span>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="cve-section">
+      <h2>NVD (JSON 2.0)</h2>
+      <p class="note">Data from the official <a href="https://nvd.nist.gov/vuln/data-feeds#divJson20Feeds" target="_blank" rel="noopener">NVD JSON 2.0 feeds</a>, enriched with the local CWE catalog when available.</p>
+      {% if cve.nvd %}
+      <dl class="overview-grid">
+        <div>
+          <dt>NVD status</dt>
+          <dd>{{ cve.nvd.vuln_status or '—' }}</dd>
+        </div>
+        <div>
+          <dt>NVD severity</dt>
+          <dd class="sev-{{ (cve.nvd.severity or 'unknown')|lower }}">
+            {{ cve.nvd.severity or '—' }}
+            {% if cve.nvd.cvss_score is not none %} (CVSS {{ cve.nvd.cvss_version }} {{ '%.1f'|format(cve.nvd.cvss_score) }}){% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt>NVD vector</dt>
+          <dd class="mono cvss-vector">{{ cve.nvd.cvss_vector or '—' }}</dd>
+        </div>
+        <div>
+          <dt>Published</dt>
+          <dd>{{ (cve.nvd.published or '—')[:19] }}</dd>
+        </div>
+        <div>
+          <dt>Last modified</dt>
+          <dd>{{ (cve.nvd.last_modified or '—')[:19] }}</dd>
+        </div>
+        <div>
+          <dt>Source</dt>
+          <dd>{{ cve.nvd.source_id or '—' }}</dd>
+        </div>
+      </dl>
+      {% if cve.nvd.description and cve.nvd.description != cve.description %}
+      <p class="cve-desc" style="margin-top:0.85rem">{{ cve.nvd.description }}</p>
+      {% endif %}
+      {% if cve.nvd.cwes %}
+      <h3 style="margin-top:1rem;font-size:0.95rem">CWE (from NVD)</h3>
+      <div class="problem-types">
+        {% for w in cve.nvd.cwes %}
+        <a class="overview-chip cwe-chip" href="{{ w.url }}" target="_blank" rel="noopener">
+          <strong>{{ w.cwe_id }}</strong>{% if w.name %} — {{ w.name }}{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+      {% if cve.nvd.cwes[0].description %}
+      <p class="muted" style="margin-top:0.5rem">{{ cve.nvd.cwes[0].description[:400] }}{% if cve.nvd.cwes[0].description|length > 400 %}…{% endif %}</p>
+      {% endif %}
+      {% endif %}
+      {% if cve.nvd.cpes %}
+      <details class="cve-details" style="margin-top:0.75rem">
+        <summary>NVD CPE matches ({{ cve.nvd.cpes|length }})</summary>
+        <ul class="cpe-list">
+          {% for cpe in cve.nvd.cpes[:40] %}
+          <li class="mono">{{ cpe }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+      {% else %}
+      <p class="empty-inline">No NVD feed record for this CVE yet. Run <strong>Sync DB</strong> on Manage to pull NVD JSON 2.0 feeds.</p>
+      {% endif %}
+    </section>
+
+    <section class="cve-section" id="cisa-kev-section">
+      <h2>CISA Known Exploited Vulnerabilities</h2>
+      <p class="note">Official CISA Known Exploited Vulnerabilities catalog (JSON feed). Catalog URL is in References.</p>
+      {% if cve.cisa_kev %}
+      <dl class="overview-grid">
+        <div>
+          <dt>In CISA KEV</dt>
+          <dd><span class="badge crit">Yes</span></dd>
+        </div>
+        <div>
+          <dt>Date added</dt>
+          <dd>{{ cve.cisa_kev.date_added or '—' }}</dd>
+        </div>
+        <div>
+          <dt>Due date</dt>
+          <dd>{{ cve.cisa_kev.due_date or '—' }}</dd>
+        </div>
+        <div>
+          <dt>Known ransomware use</dt>
+          <dd>{{ cve.cisa_kev.known_ransomware or '—' }}</dd>
+        </div>
+        <div>
+          <dt>Vendor / product</dt>
+          <dd>{{ cve.cisa_kev.vendor_project or '—' }}{% if cve.cisa_kev.product %} / {{ cve.cisa_kev.product }}{% endif %}</dd>
+        </div>
+        <div>
+          <dt>Vulnerability</dt>
+          <dd>{{ cve.cisa_kev.vulnerability_name or '—' }}</dd>
+        </div>
+      </dl>
+      {% if cve.cisa_kev.short_description %}
+      <p class="cve-desc" style="margin-top:0.85rem">{{ cve.cisa_kev.short_description }}</p>
+      {% endif %}
+      {% if cve.cisa_kev.required_action %}
+      <p style="margin-top:0.75rem"><strong>Required action:</strong> {{ cve.cisa_kev.required_action }}</p>
+      {% endif %}
+      {% if cve.cisa_kev.cwes %}
+      <div class="problem-types" style="margin-top:0.75rem">
+        {% for w in cve.cisa_kev.cwes %}
+        <span class="overview-chip">{{ w }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% else %}
+      <p class="empty-inline">Not listed in the local CISA KEV catalog. Run <strong>Sync DB</strong> to refresh the official feed.</p>
+      {% endif %}
+    </section>
+
+
+    <section class="cve-section" id="nuclei-section">
+      <h2>Nuclei templates ({{ cve.nuclei_templates|length if cve.nuclei_templates else 0 }})</h2>
+      <p class="note">Mapped from projectdiscovery/nuclei-templates (links in References).</p>
+      {% if cve.nuclei_templates %}
+      <ul class="patch-list">
+        {% for t in cve.nuclei_templates %}
+        <li>
+          <div class="feed-card-head">
+            {% if t.severity %}<span class="badge edb">{{ t.severity }}</span>{% endif %}
+            <strong>{{ t.template_id }}</strong>
+          </div>
+          {% if t.name and t.name != t.template_id %}<strong class="feed-card-title">{{ t.name }}</strong>{% endif %}
+          {% if t.path %}<p class="feed-card-desc mono">{{ t.path }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="empty-inline">No nuclei templates mapped to this CVE in the local index. Run <strong>Sync DB</strong> to refresh templates.</p>
+      {% endif %}
+    </section>
+
+    <section class="cve-section" id="metasploit-section">
+      <h2>Metasploit modules ({{ cve.metasploit_modules|length if cve.metasploit_modules else 0 }})</h2>
+      <p class="note">Mapped from rapid7/metasploit-framework modules (links in References).</p>
+      {% if cve.metasploit_modules %}
+      <ul class="patch-list">
+        {% for m in cve.metasploit_modules %}
+        <li>
+          <div class="feed-card-head">
+            <span class="badge edb">{{ m.module_type }}</span>
+            {% if m.rank %}<span class="badge ver">{{ m.rank }}</span>{% endif %}
+            <strong>{{ m.fullname }}</strong>
+          </div>
+          {% if m.name and m.name != m.fullname %}<strong class="feed-card-title">{{ m.name }}</strong>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="empty-inline">No Metasploit modules mapped to this CVE yet. Run <strong>Sync DB</strong> to index the framework.</p>
+      {% endif %}
+    </section>
+
+    <section class="cve-section" id="detection-section">
+      <h2>Detection rules (YARA / Sigma)</h2>
+      <p class="note">
+        Heuristic hunting templates for EDR (YARA file/memory) and SIEM (Sigma).
+        Generated from local CVE / Exploit-DB / Metasploit metadata — tune before production use.
+      </p>
+      {% if cve.detection and cve.detection.yara %}
+      <h3>YARA (EDR)</h3>
+      <pre class="code-block"><code>{{ cve.detection.yara.content }}</code></pre>
+      {% if cve.detection.exploit_yara %}
+      <details class="code-details">
+        <summary>Per-exploit YARA ({{ cve.detection.exploit_yara|length }})</summary>
+        {% for rule in cve.detection.exploit_yara %}
+        <p class="edb-meta"><span class="badge edb">EDB-{{ rule.edb_id }}</span> {{ rule.name }}</p>
+        <pre class="code-block"><code>{{ rule.content }}</code></pre>
+        {% endfor %}
+      </details>
+      {% endif %}
+      {% endif %}
+      {% if cve.detection and cve.detection.sigma %}
+      <h3>Sigma (SIEM)</h3>
+      <pre class="code-block"><code>{{ cve.detection.sigma.content }}</code></pre>
+      {% endif %}
+      {% if not cve.detection or (not cve.detection.yara and not cve.detection.sigma) %}
+      <p class="empty-inline">No detection templates available for this CVE.</p>
+      {% endif %}
+    </section>
+
+    <section class="cve-section" id="msrc-section">
+      <h2>Microsoft Security Update Guide ({{ cve.msrc.remediations|length if cve.msrc and cve.msrc.remediations else 0 }})</h2>
+      <p class="note">
+        Offline mirror of the official MSRC CVRF API for
+        <a href="https://msrc.microsoft.com/update-guide" target="_blank" rel="noopener">Security Update Guide</a>
+        (KB / product / severity). Run <strong>Sync DB</strong> to refresh.
+      </p>
+      {% if cve.msrc and cve.msrc.entries %}
+        {% for e in cve.msrc.entries[:5] %}
+        <p class="edb-meta">
+          <a class="badge edb" href="https://msrc.microsoft.com/update-guide/release/{{ e.update_id }}" target="_blank" rel="noopener">{{ e.update_id }}</a>
+          {% if e.severity %}<span class="badge crit">{{ e.severity }}</span>{% endif %}
+          {% if e.impact %}<span class="badge ver">{{ e.impact }}</span>{% endif %}
+          {% if e.cvss_score is not none %}<span class="badge ver">CVSS {{ '%.1f'|format(e.cvss_score) }}</span>{% endif %}
+          <strong>{{ e.title or '' }}</strong>
+          {% if e.detail_url %}
+          · <a href="{{ e.detail_url }}" target="_blank" rel="noopener">MSRC advisory</a>
+          {% endif %}
+        </p>
+        {% endfor %}
+      {% endif %}
+      {% if cve.msrc and cve.msrc.remediations %}
+      <ul class="patch-list">
+        {% for rem in cve.msrc.remediations %}
+        <li>
+          <span class="badge edb">{{ rem.kb or 'Update' }}</span>
+          {% if rem.subtype %}<span class="badge ver">{{ rem.subtype }}</span>{% endif %}
+          {% if rem.url %}
+          <a href="{{ rem.url }}" target="_blank" rel="noopener">{{ rem.kb or 'Patch' }}</a>
+          {% else %}
+          {{ rem.kb or '—' }}
+          {% endif %}
+          {% if rem.support_url and rem.support_url != rem.url %}
+          · <a href="{{ rem.support_url }}" target="_blank" rel="noopener">Microsoft Support</a>
+          {% endif %}
+          {% if rem.catalog_url and rem.catalog_url != rem.url %}
+          · <a href="{{ rem.catalog_url }}" target="_blank" rel="noopener">Update Catalog</a>
+          {% endif %}
+          {% if rem.fixed_build %}<div class="muted">Fixed build {{ rem.fixed_build }}{% if rem.restart_required %} · restart {{ rem.restart_required }}{% endif %}</div>{% endif %}
+          {% if rem.product_names %}<div class="muted">{{ rem.product_names }}</div>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="empty-inline">No MSRC Update Guide remediations indexed for this CVE yet.</p>
+      {% endif %}
+    </section>
+
+    <section class="cve-section" id="intel-feeds-section">
+      <h2>Distro &amp; advisory feeds</h2>
+      <p class="note">Offline mirrors from Debian Security Tracker, Ubuntu CVE Tracker / SOSS / VCF, OSV, GitHub Advisories, and CAPEC (via CWE).</p>
+
+      {% if cve.ubuntu %}
+      <h3>Ubuntu</h3>
+      <p class="edb-meta feed-card-head">
+        <a class="badge edb" href="{{ cve.ubuntu.detail_url }}" target="_blank" rel="noopener">Ubuntu</a>
+        {% if cve.ubuntu.priority %}<span class="badge ver">{{ cve.ubuntu.priority }}</span>{% endif %}
+        <strong>{{ cve.ubuntu.title or cve.cve_id }}</strong>
+      </p>
+      {% if cve.ubuntu.description %}<p class="feed-card-desc">{{ cve.ubuntu.description[:400] }}{% if cve.ubuntu.description|length > 400 %}…{% endif %}</p>{% endif %}
+      {% endif %}
+
+      {% if cve.debian %}
+      <h3>Debian</h3>
+      <p class="edb-meta feed-card-head">
+        <a class="badge edb" href="{{ cve.debian.detail_url }}" target="_blank" rel="noopener">Debian tracker</a>
+        {% if cve.debian.scope %}<span class="badge ver">{{ cve.debian.scope }}</span>{% endif %}
+        {% if cve.debian.debianbug %}<span class="badge ver">bug {{ cve.debian.debianbug }}</span>{% endif %}
+      </p>
+      {% if cve.debian.description %}<p class="feed-card-desc">{{ cve.debian.description[:400] }}{% if cve.debian.description|length > 400 %}…{% endif %}</p>{% endif %}
+      {% endif %}
+
+      {% if cve.ghsa %}
+      <h3>GitHub Advisories ({{ cve.ghsa|length }})</h3>
+      <ul class="patch-list">
+        {% for g in cve.ghsa %}
+        <li>
+          <div class="feed-card-head">
+            <a class="badge edb" href="{{ g.html_url }}" target="_blank" rel="noopener">{{ g.ghsa_id }}</a>
+            {% if g.severity %}<span class="badge ver">{{ g.severity }}</span>{% endif %}
+          </div>
+          {% if g.summary %}<strong class="feed-card-title">{{ g.summary }}</strong>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if cve.osv %}
+      <h3>OSV ({{ cve.osv|length }})</h3>
+      <ul class="patch-list">
+        {% for o in cve.osv %}
+        <li>
+          <div class="feed-card-head">
+            <a class="badge edb" href="{{ o.detail_url }}" target="_blank" rel="noopener">{{ o.osv_id }}</a>
+            {% if o.severity %}<span class="badge ver">{{ o.severity }}</span>{% endif %}
+          </div>
+          {% if o.summary %}<strong class="feed-card-title">{{ o.summary }}</strong>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if cve.capec %}
+      <h3>CAPEC ({{ cve.capec|length }})</h3>
+      <ul class="patch-list">
+        {% for c in cve.capec %}
+        <li>
+          <div class="feed-card-head">
+            <a class="badge edb" href="{{ c.detail_url }}" target="_blank" rel="noopener">{{ c.capec_id }}</a>
+            {% if c.cwe_id %}<span class="badge ver">{{ c.cwe_id }}</span>{% endif %}
+            {% if c.severity %}<span class="badge ver">{{ c.severity }}</span>{% endif %}
+          </div>
+          {% if c.name %}<strong class="feed-card-title">{{ c.name }}</strong>{% endif %}
+          {% if c.description %}<p class="feed-card-desc">{{ c.description[:240] }}{% if c.description|length > 240 %}…{% endif %}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if not cve.ubuntu and not cve.debian and not cve.ghsa and not cve.osv and not cve.capec %}
+      <p class="empty-inline">No Ubuntu / Debian / OSV / GHSA / CAPEC rows for this CVE yet. Run <strong>Sync DB</strong>.</p>
+      {% endif %}
+    </section>
+
+    <section class="cve-section" id="nessus-section">
+      <h2>Nessus plugins ({{ cve.nessus_plugins|length if cve.nessus_plugins else 0 }})</h2>
+      <p class="note">
+        Mapped from local <code>all-2.0.tar.gz</code> (script_id, CVE, solution, see_also, EDB xrefs).
+      </p>
+      {% if cve.nessus_plugins %}
+      <ul class="patch-list">
+        {% for p in cve.nessus_plugins %}
+        <li>
+          <div class="feed-card-head">
+            <span class="badge edb">#{{ p.plugin_id }}</span>
+            {% if p.family %}<span class="badge ver">{{ p.family }}</span>{% endif %}
+          </div>
+          {% if p.name %}<strong class="feed-card-title">{{ p.name }}</strong>{% endif %}
+          {% if p.solution %}<p class="feed-card-desc">{{ p.solution[:280] }}{% if p.solution|length > 280 %}…{% endif %}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="empty-inline">No Nessus plugins mapped to this CVE. Place <code>all-2.0.tar.gz</code> at the project root (or set path/URL in Settings) and run <strong>Sync DB</strong>.</p>
+      {% endif %}
+    </section>
+
+    <section class="cve-section">
+      <h2>Affected Products ({{ cve.product_names|length if cve.product_names else cve.product_count }})</h2>
+      {% if cve.product_names %}
+      <ul class="product-name-list">
+        {% for name in cve.product_names[:40] %}
+        <li>{{ name }}</li>
+        {% endfor %}
+        {% if cve.product_names|length > 40 %}
+        <li class="more">… {{ cve.product_names|length - 40 }} more</li>
+        {% endif %}
+      </ul>
+      {% elif cve.products_by_vendor %}
+        {% for group in cve.products_by_vendor %}
+        <div class="product-group">
+          <h3>{{ group.vendor }}</h3>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="empty-inline">No structured product rows for this CVE (common for older MITRE entries).</p>
+      {% endif %}
+    </section>
+
+    <section class="cve-section">
+      <h2>Affected Versions ({{ cve.affected_versions|length }})</h2>
+      {% if cve.affected_versions %}
+      <div class="table-wrap">
+        <table class="cve-table">
+          <thead>
+            <tr>
+              <th>Vendor</th>
+              <th>Product</th>
+              <th>Version range</th>
+              <th>Status</th>
+              <th>Fixed in</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in cve.affected_versions[:80] %}
+            <tr>
+              <td>{{ row.vendor }}</td>
+              <td>
+                {{ row.product }}
+                {% if row.package %}<div class="mono muted">{{ row.package }}</div>{% endif %}
+                {% if row.platform %}<div class="muted">{{ row.platform }}</div>{% endif %}
+              </td>
+              <td class="mono">{{ row.version_label or row.version or '—' }}</td>
+              <td>{{ row.status or '—' }}</td>
+              <td class="mono">{{ row.fixed_versions or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if cve.affected_versions|length > 80 %}
+      <p class="muted">Showing 80 of {{ cve.affected_versions|length }} version rows.</p>
+      {% endif %}
+      {% else %}
+      <p class="empty-inline">No affected version ranges in the local CVE record.</p>
+      {% endif %}
+      {% if cve.fixed_versions %}
+      <p class="fixed-line"><strong>Known fixed versions:</strong>
+        {% for fv in cve.fixed_versions[:20] %}
+        <span class="overview-chip">{{ fv }}</span>
+        {% endfor %}
+      </p>
+      {% endif %}
+      {% if cve.cpes %}
+      <details class="cve-details">
+        <summary>CPE strings ({{ cve.cpes|length }})</summary>
+        <ul class="cpe-list">
+          {% for cpe in cve.cpes %}
+          <li class="mono">{{ cpe }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+    </section>
+
+    <section class="cve-section">
+      <h2>Patches &amp; Updates ({{ cve.patches|length }})</h2>
+      {% if cve.patches %}
+      <ul class="patch-list">
+        {% for patch in cve.patches %}
+        <li>
+          <span class="badge edb">{{ patch.kind or 'Advisory' }}</span>
+          {% if patch.url %}
+          <a href="{{ patch.url }}" target="_blank" rel="noopener">{% if patch.name and patch.name != patch.url %}{{ patch.name }}{% else %}{{ patch.url }}{% endif %}</a>
+          {% elif patch.name %}
+          {{ patch.name }}
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="empty-inline">No patch / advisory download links tagged in the local CVE references.</p>
+      {% endif %}
+    </section>
+
+    <section class="cve-section">
+      <h2>GitHub PoCs ({{ cve.github_pocs|length }})</h2>
+      <p class="note">Public GitHub repositories from CVE references, PoC-in-GitHub, and 0xMarcio/cve (URLs in References).</p>
+      {% if cve.github_pocs %}
+      <ul class="patch-list">
+        {% for poc in cve.github_pocs %}
+        <li>
+          <div class="feed-card-head">
+            <span class="badge ver">{{ poc.exploit_type or 'Git Repository PoC' }}</span>
+            <span class="badge edb">GitHub</span>
+            {% if poc.stargazers_count is not none %}<span class="badge ver">★ {{ poc.stargazers_count }}</span>{% endif %}
+          </div>
+          <strong class="feed-card-title">{{ poc.full_name or poc.html_url }}</strong>
+          {% if poc.description %}<p class="feed-card-desc">{{ poc.description }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="empty-inline">No GitHub PoC repositories indexed for this CVE yet.</p>
+      {% endif %}
+    </section>
+
+
+    <section class="cve-section">
+      <h2>MITRE ATT&amp;CK</h2>
+      <p class="note">Heuristic technique mapping from the threat category — verify against your telemetry and primary CTI.</p>
+      {% if cve.attack %}
+      <ul class="patch-list">
+        {% for tech in cve.attack %}
+        <li>
+          <span class="badge edb">{{ tech.id }}</span>
+          {% if tech.url %}
+          <a href="{{ tech.url }}" target="_blank" rel="noopener"><strong>{{ tech.name }}</strong></a>
+          {% else %}
+          <strong>{{ tech.name }}</strong>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="empty-inline">No ATT&amp;CK mapping available.</p>
+      {% endif %}
+    </section>
+
+    <section class="cve-section">
+      <h2>APT / threat actors</h2>
+      <p class="note">{{ cve.apt.note if cve.apt else 'Groups known to use this exploit, or named in local text.' }}</p>
+      {% if cve.apt and cve.apt.actors %}
+      <ul class="patch-list">
+        {% for actor in cve.apt.actors %}
+        <li>
+          <div class="feed-card-head">
+            <span class="badge crit">APT</span>
+          </div>
+          <strong class="feed-card-title">{{ actor.name }}</strong>
+          {% if actor.source %}<p class="feed-card-desc">{{ actor.source }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="empty-inline">No APT / threat group association found for this CVE yet.</p>
+      {% endif %}
+    </section>
+
+    <section class="cve-section">
+      <h2>Public credentials / unlock material</h2>
+      <p class="note">{{ cve.unlock.note if cve.unlock else 'Only values explicitly present in advisory text are shown — nothing is generated.' }}</p>
+      {% if cve.unlock and cve.unlock.entries %}
+      <div class="table-wrap">
+        <table class="cve-table">
+          <thead>
+            <tr>
+              <th>Kind</th>
+              <th>Value (from text)</th>
+              <th>Context</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in cve.unlock.entries %}
+            <tr>
+              <td>{{ item.kind }}</td>
+              <td class="mono">{{ item.value }}</td>
+              <td class="muted">{{ item.context }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="empty-inline">No default credentials or key material found in the local advisory text.</p>
+      {% endif %}
+    </section>
+
+    <section class="cve-section">
+      <h2>Exploit-DB ({{ cve.exploit_count }})</h2>
+      <p class="note">Local archive source only — for authorized offline research. Do not use against systems you do not own or have permission to test.</p>
+      {% if cve.exploits %}
+        {% for ex in cve.exploits %}
+        <article class="edb-block" id="edb-{{ ex.edb_id }}">
+          <div class="edb-head">
+            <span class="id">EDB-{{ ex.edb_id }}</span>
+            {% if ex.kind and ex.kind != 'exploit' %}<span class="badge ver">{{ ex.kind }}</span>{% endif %}
+            {% if ex.exploit_type %}<span class="badge ver">{{ ex.exploit_type }}</span>{% endif %}
+            <span class="badge edb">{{ ex.platform or 'n/a' }}</span>
+            <span class="badge edb">{{ ex.type or '' }}</span>
+            {% if ex.verified %}<span class="badge ver">verified</span>{% endif %}
+            {% if ex.has_application %}<span class="badge ver">app download</span>{% endif %}
+            {% if ex.has_article %}<span class="badge edb">article</span>{% endif %}
+            {% if ex.has_screenshot %}<span class="badge edb">screenshot</span>{% endif %}
+            <span class="mono muted">{{ ex.date_pub or '' }}</span>
+          </div>
+          <p class="edb-title">{{ ex.title }}</p>
+          <p class="edb-meta">
+            {% if ex.author %}by {{ ex.author }} · {% endif %}
+            <span class="mono">{{ ex.path or '' }}</span>
+            {% if ex.aliases %} · aliases: {{ ex.aliases }}{% endif %}
+          </p>
+          {% if ex.has_application or ex.has_article or ex.has_screenshot %}
+          <p class="edb-meta muted">Linked attachments (app download / article / screenshot) are listed under References.</p>
+          {% endif %}
+          {% if ex.source and ex.source.available %}
+          <details class="code-details" {% if loop.first %}open{% endif %}>
+            <summary>View source{% if ex.source.truncated %} (truncated){% endif %}</summary>
+            <pre class="code-block"><code>{{ ex.source.content }}</code></pre>
+          </details>
+          {% elif ex.source and ex.source.binary %}
+          <p class="empty-inline">Binary payload not displayed ({{ ex.path }}).</p>
+          {% else %}
+          <p class="empty-inline">{{ (ex.source and ex.source.error) or 'Source not available in local archive.' }}</p>
+          {% endif %}
+        </article>
+        {% endfor %}
+      {% else %}
+        <p class="empty-inline">No Exploit-DB entries mapped to this CVE in the local index.</p>
+      {% endif %}
+    </section>
+
+    {% if cve.references %}
+    <section class="cve-section">
+      <h2>References ({{ cve.references|length }})</h2>
+      <p class="note">All external URLs from this CVE page are listed here.</p>
+      <ul class="ref-list">
+        {% for ref in cve.references %}
+        <li>
+          {% if ref.kind %}<span class="badge edb">{{ ref.kind }}</span>{% endif %}
+          <a class="mono" href="{{ ref.url }}" target="_blank" rel="noopener">{{ ref.url }}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    {% if cve.credits %}
+    <section class="cve-section">
+      <h2>Acknowledgments</h2>
+      <ul>
+        {% for c in cve.credits %}
+        <li>{{ c }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </main>
+</body>
+</html>

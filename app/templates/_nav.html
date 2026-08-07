@@ -1,0 +1,42 @@
+{% set active = active_nav|default('') %}
+<nav class="topnav" id="topnav">
+  <a class="logo" href="/">vulnlocal <span class="nav-ver">v{{ version|default('1.0.0') }}</span></a>
+  <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav-actions">
+    <span class="nav-toggle-bar" aria-hidden="true"></span>
+    <span class="nav-toggle-bar" aria-hidden="true"></span>
+    <span class="nav-toggle-bar" aria-hidden="true"></span>
+  </button>
+  <div class="nav-actions" id="nav-actions">
+    <a class="nav-link{% if active == 'home' %} active{% endif %}" href="/">Home</a>
+    <a class="nav-link{% if active == 'manage' %} active{% endif %}" href="/manage">Manage</a>
+    <a class="nav-link{% if active == 'settings' %} active{% endif %}" href="/settings">Settings</a>
+    <a class="nav-link{% if active == 'manual' %} active{% endif %}" href="/manual">Manual</a>
+    <a class="nav-link{% if active == 'faq' %} active{% endif %}" href="/faq">FAQ</a>
+    <a class="nav-link{% if active == 'about' %} active{% endif %}" href="/about">About</a>
+  </div>
+</nav>
+<script>
+(function () {
+  var nav = document.getElementById("topnav");
+  var btn = document.getElementById("nav-toggle");
+  var panel = document.getElementById("nav-actions");
+  if (!nav || !btn || !panel) return;
+  function setOpen(open) {
+    nav.classList.toggle("nav-open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    btn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+  }
+  btn.addEventListener("click", function () {
+    setOpen(!nav.classList.contains("nav-open"));
+  });
+  panel.querySelectorAll("a").forEach(function (a) {
+    a.addEventListener("click", function () { setOpen(false); });
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") setOpen(false);
+  });
+  window.addEventListener("resize", function () {
+    if (window.matchMedia("(min-width: 860px)").matches) setOpen(false);
+  });
+})();
+</script>

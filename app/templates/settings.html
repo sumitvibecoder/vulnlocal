@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Settings — vulnlocal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=18" />
+</head>
+<body>
+  {% include '_nav.html' %}
+
+  <main class="manage-page">
+    <header class="manage-hero">
+      <h1>Settings</h1>
+      <p>Configure HTTP proxy and sync source URLs used by Sync DB.</p>
+    </header>
+
+    <form id="settings-form" class="settings-form">
+      <section class="manage-card">
+        <h2>Proxy</h2>
+        <p class="hint" style="margin-top:0">Applied to all bulk downloads and JSON API syncs. Supports HTTP, HTTPS, SOCKS4, and SOCKS5.</p>
+        <label class="settings-check">
+          <input type="checkbox" id="proxy-enabled" {% if settings.proxy.enabled %}checked{% endif %} />
+          Enable proxy
+        </label>
+        <label class="settings-field">
+          <span>Proxy type</span>
+          <select id="proxy-type">
+            {% set ptype = (settings.proxy.type or 'http')|lower %}
+            <option value="http" {% if ptype == 'http' %}selected{% endif %}>HTTP</option>
+            <option value="https" {% if ptype == 'https' %}selected{% endif %}>HTTPS</option>
+            <option value="socks4" {% if ptype == 'socks4' %}selected{% endif %}>SOCKS4</option>
+            <option value="socks5" {% if ptype in ['socks5', 'socks5h', 'socks'] %}selected{% endif %}>SOCKS5</option>
+          </select>
+        </label>
+        <div class="settings-row">
+          <label class="settings-field">
+            <span>Host</span>
+            <input type="text" id="proxy-host" value="{{ settings.proxy.host or '' }}" placeholder="127.0.0.1" autocomplete="off" />
+          </label>
+          <label class="settings-field">
+            <span>Port</span>
+            <input type="text" id="proxy-port" value="{{ settings.proxy.port or '' }}" placeholder="8080 / 1080" autocomplete="off" />
+          </label>
+        </div>
+        <div class="settings-row">
+          <label class="settings-field">
+            <span>Username (optional)</span>
+            <input type="text" id="proxy-username" value="{{ settings.proxy.username or '' }}" autocomplete="off" />
+          </label>
+          <label class="settings-field">
+            <span>Password (optional)</span>
+            <input type="password" id="proxy-password" value="{{ settings.proxy.password or '' }}" autocomplete="new-password" />
+          </label>
+        </div>
+        <label class="settings-field">
+          <span>Full proxy URL (optional override)</span>
+          <input type="text" id="proxy-url" value="{{ settings.proxy.url or '' }}" placeholder="socks5://127.0.0.1:1080 or http://127.0.0.1:8080" />
+        </label>
+        <p class="hint">If Full URL is set it overrides host/port. Type still selects the scheme when the URL has none.</p>
+      </section>
+
+      <section class="manage-card">
+        <h2>Sync source URLs</h2>
+        <p class="hint" style="margin-top:0">Official bulk / JSON endpoints used by Sync DB and CVE enrichment (no HTML scraping). Placeholders like <code>{cve_id}</code> / <code>{year}</code> are filled at request time.</p>
+
+        <h3 class="settings-subhead">CVE List V5</h3>
+        <label class="settings-field"><span>CVE List zip (github.com archive)</span><input type="text" data-url="cve_main_zip" value="{{ settings.urls.cve_main_zip or '' }}" /></label>
+        <label class="settings-field"><span>CVE List zip (codeload fallback)</span><input type="text" data-url="cve_codeload_zip" value="{{ settings.urls.cve_codeload_zip or '' }}" /></label>
+        <label class="settings-field"><span>CVE delta JSON</span><input type="text" data-url="cve_delta" value="{{ settings.urls.cve_delta or '' }}" /></label>
+        <label class="settings-field"><span>CVE delta log JSON</span><input type="text" data-url="cve_delta_log" value="{{ settings.urls.cve_delta_log or '' }}" /></label>
+        <label class="settings-field"><span>CVE releases API</span><input type="text" data-url="cve_releases_api" value="{{ settings.urls.cve_releases_api or '' }}" /></label>
+
+        <h3 class="settings-subhead">Exploit-DB</h3>
+        <label class="settings-field"><span>Exploit-DB archive</span><input type="text" data-url="exploitdb_archive" value="{{ settings.urls.exploitdb_archive or '' }}" /></label>
+        <label class="settings-field"><span>Exploit-DB exploits CSV</span><input type="text" data-url="exploitdb_csv" value="{{ settings.urls.exploitdb_csv or '' }}" /></label>
+        <label class="settings-field"><span>Exploit-DB shellcodes CSV</span><input type="text" data-url="exploitdb_shellcodes_csv" value="{{ settings.urls.exploitdb_shellcodes_csv or '' }}" /></label>
+        <label class="settings-field"><span>Exploit-DB papers archive</span><input type="text" data-url="exploitdb_papers_archive" value="{{ settings.urls.exploitdb_papers_archive or '' }}" /></label>
+        <label class="settings-field"><span>Exploit-DB papers CSV</span><input type="text" data-url="exploitdb_papers_csv" value="{{ settings.urls.exploitdb_papers_csv or '' }}" /></label>
+
+        <h3 class="settings-subhead">NVD / CWE / CISA</h3>
+        <label class="settings-field"><span>NVD feed base</span><input type="text" data-url="nvd_feed_base" value="{{ settings.urls.nvd_feed_base or '' }}" /></label>
+        <label class="settings-field"><span>CWE XML zip</span><input type="text" data-url="cwe_xml_zip" value="{{ settings.urls.cwe_xml_zip or '' }}" /></label>
+        <label class="settings-field"><span>CISA KEV JSON</span><input type="text" data-url="cisa_kev_json" value="{{ settings.urls.cisa_kev_json or '' }}" /></label>
+        <label class="settings-field"><span>CISA KEV CSV</span><input type="text" data-url="cisa_kev_csv" value="{{ settings.urls.cisa_kev_csv or '' }}" /></label>
+
+        <h3 class="settings-subhead">Scanners / frameworks</h3>
+        <label class="settings-field"><span>Nuclei templates zip</span><input type="text" data-url="nuclei_templates_zip" value="{{ settings.urls.nuclei_templates_zip or '' }}" /></label>
+        <label class="settings-field"><span>Metasploit Framework zip</span><input type="text" data-url="metasploit_zip" value="{{ settings.urls.metasploit_zip or '' }}" /></label>
+        <label class="settings-field"><span>Nessus all-2.0.tar.gz path (local)</span><input type="text" data-url="nessus_plugins_path" value="{{ settings.urls.nessus_plugins_path or '' }}" /></label>
+        <label class="settings-field"><span>Nessus all-2.0.tar.gz URL (optional licensed)</span><input type="text" data-url="nessus_plugins_url" value="{{ settings.urls.nessus_plugins_url or '' }}" placeholder="https://plugins.nessus.org/get.php?f=all-2.0.tar.gz&u=…&p=…" /></label>
+
+        <h3 class="settings-subhead">Microsoft Security Update Guide</h3>
+        <label class="settings-field"><span>MSRC updates index</span><input type="text" data-url="msrc_updates" value="{{ settings.urls.msrc_updates or '' }}" /></label>
+        <label class="settings-field"><span>MSRC CVRF base</span><input type="text" data-url="msrc_cvrf_base" value="{{ settings.urls.msrc_cvrf_base or '' }}" /></label>
+        <label class="settings-field"><span>MSRC CSAF base</span><input type="text" data-url="msrc_csaf_base" value="{{ settings.urls.msrc_csaf_base or '' }}" /></label>
+        <label class="settings-field"><span>MSRC Update Guide RSS</span><input type="text" data-url="msrc_rss" value="{{ settings.urls.msrc_rss or '' }}" /></label>
+        <label class="settings-field"><span>MSRC CVRF swagger</span><input type="text" data-url="msrc_swagger" value="{{ settings.urls.msrc_swagger or '' }}" /></label>
+
+        <h3 class="settings-subhead">Live enrichment APIs</h3>
+        <label class="settings-field"><span>EPSS API (use {cve_id})</span><input type="text" data-url="epss_api" value="{{ settings.urls.epss_api or '' }}" /></label>
+        <label class="settings-field"><span>PoC-in-GitHub index (use {year} and {cve_id})</span><input type="text" data-url="poc_in_github_index" value="{{ settings.urls.poc_in_github_index or '' }}" /></label>
+
+        <h3 class="settings-subhead">Extra intelligence feeds</h3>
+        <label class="settings-field"><span>CAPEC XML</span><input type="text" data-url="capec_xml" value="{{ settings.urls.capec_xml or '' }}" /></label>
+        <label class="settings-field"><span>Debian Security Tracker JSON</span><input type="text" data-url="debian_tracker_json" value="{{ settings.urls.debian_tracker_json or '' }}" /></label>
+        <label class="settings-field"><span>Ubuntu CVE Tracker zips (comma-separated fallbacks)</span><input type="text" data-url="ubuntu_uct_zips" value="{{ settings.urls.ubuntu_uct_zips or '' }}" /></label>
+        <label class="settings-field"><span>Canonical SOSS VEX zip</span><input type="text" data-url="ubuntu_soss_zip" value="{{ settings.urls.ubuntu_soss_zip or '' }}" /></label>
+        <label class="settings-field"><span>VCF Ubuntu vulnerabilities zip</span><input type="text" data-url="ubuntu_vcf_zip" value="{{ settings.urls.ubuntu_vcf_zip or '' }}" /></label>
+        <label class="settings-field"><span>OSV ecosystem zip template (use {ecosystem})</span><input type="text" data-url="osv_ecosystem_zip" value="{{ settings.urls.osv_ecosystem_zip or '' }}" /></label>
+        <label class="settings-field"><span>OSV ecosystems (comma-separated)</span><input type="text" data-url="osv_ecosystems" value="{{ settings.urls.osv_ecosystems or '' }}" /></label>
+        <label class="settings-field"><span>GitHub advisory-database zip</span><input type="text" data-url="github_advisory_database_zip" value="{{ settings.urls.github_advisory_database_zip or '' }}" /></label>
+        <label class="settings-field"><span>PoC-in-GitHub zip</span><input type="text" data-url="poc_github_zip" value="{{ settings.urls.poc_github_zip or '' }}" /></label>
+        <label class="settings-field"><span>0xMarcio/cve GitHub index (raw txt)</span><input type="text" data-url="marcio_cve_github_index" value="{{ settings.urls.marcio_cve_github_index or '' }}" /></label>
+        <label class="settings-field"><span>0xMarcio/cve zip (fallback)</span><input type="text" data-url="marcio_cve_zip" value="{{ settings.urls.marcio_cve_zip or '' }}" /></label>
+      </section>
+
+      <div class="settings-save-bar" role="region" aria-label="Save settings">
+        <div class="settings-save-copy">
+          <strong>Ready to apply</strong>
+          <span class="hint" id="settings-status">Proxy and sync URLs are written to local settings.json.</span>
+        </div>
+        <button type="submit" class="settings-save-btn" id="settings-save-btn">
+          <span class="settings-save-btn-label">Save settings</span>
+        </button>
+      </div>
+    </form>
+  </main>
+
+  <script src="{{ url_for('static', filename='settings.js') }}"></script>
+</body>
+</html>

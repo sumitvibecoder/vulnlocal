@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>About — vulnlocal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=18" />
+</head>
+<body>
+  {% include '_nav.html' %}
+  <main class="manage-page doc-page">
+    <header class="manage-hero">
+      <h1>About vulnlocal</h1>
+      <p>Version {{ version }} — offline CVE / Exploit-DB / MSRC correlator with Nmap NSE scanning and defensive detection templates.</p>
+    </header>
+    <section class="manage-card prose">
+      <h2>What it is</h2>
+      <p><strong>vulnlocal</strong> mirrors official vulnerability intelligence locally so you can search CVEs, map exploits, Microsoft patches, generate YARA/Sigma hunting aids, and scan authorized hosts with the Nmap NSE script.</p>
+      <h2>What it is not</h2>
+      <ul>
+        <li>Not a commercial GUI vulnerability-scanning product.</li>
+        <li>Not an exploit framework — Metasploit/Exploit-DB data is indexed for research correlation only.</li>
+        <li>Not a license to scan third-party systems. Use only on assets you own or are authorized to test.</li>
+      </ul>
+      <h2>Primary sources</h2>
+      <ul>
+        <li>CVE List V5 (CVE Project)</li>
+        <li>NVD JSON 2.0 feeds</li>
+        <li>Exploit-DB official Git archives</li>
+        <li>Microsoft Security Update Guide via MSRC CVRF API</li>
+        <li>CISA KEV, Nuclei templates, Metasploit modules, Nessus <code>all-2.0.tar.gz</code> metadata</li>
+        <li>CAPEC, Debian Security Tracker, Ubuntu CVE Tracker / SOSS / VCF (GitHub), OSV.dev, GitHub Advisories, PoC-in-GitHub, 0xMarcio/cve</li>
+      </ul>
+      <h2>License</h2>
+      <p>Released under the MIT License. Third-party feeds remain under their respective terms (including Tenable plugin feed licensing when applicable). See <code>CREDITS.md</code> in the repository for full acknowledgements.</p>
+    </section>
+  </main>
+</body>
+</html>

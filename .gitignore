@@ -1,0 +1,68 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Runtime data (regenerated locally — keep folder placeholders only)
+data/**
+!data/.gitkeep
+downloads/**
+!downloads/.gitkeep
+
+# SQLite / WAL anywhere
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Local settings / secrets
+**/settings.json
+**/.secret_key
+.env
+.env.*
+
+# Generated packages & backups
+**/packages/
+**/backups/
+
+# NSE: commit the Lua script; ignore offline DB + temps
+nse/db/**
+!nse/db/.gitkeep
+nse/**/*.export.*
+nse/localvuln/
+nse/vulnlocal/
+
+# Optional bulky local mirrors (never commit)
+cvelistV5*/
+**/all-2.0.tar.gz
+*.zip
+*.part
+
+# Logs / scratch
+*.log
+*.tmp
+_tmp_*.py

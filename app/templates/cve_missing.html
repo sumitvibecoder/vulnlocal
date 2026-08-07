@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ cve_id }} — not found</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=18" />
+</head>
+<body>
+  {% include '_nav.html' %}
+  <main class="cve-page">
+    <h1>{{ cve_id }}</h1>
+    <p class="empty-inline">This CVE is not in the local database yet. Sync CVE List V5 from Manage, then try again.</p>
+    <p><a href="/">← Back to search</a></p>
+  </main>
+</body>
+</html>

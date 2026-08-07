@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manual — vulnlocal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=18" />
+</head>
+<body>
+  {% include '_nav.html' %}
+  <main class="manage-page doc-page">
+    <header class="manage-hero">
+      <h1>Manual</h1>
+      <p>How to install, sync, search, and scan with vulnlocal {{ version }}.</p>
+    </header>
+
+    <section class="manage-card prose">
+      <h2>1. Install</h2>
+      <p>Supported on <strong>Windows</strong>, <strong>Linux</strong>, and <strong>macOS</strong> (Python 3.10+).</p>
+      <pre class="code-block"><code>cd vulnlocal
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# Linux/macOS: source .venv/bin/activate
+python -m pip install -r requirements.txt
+python run.py init-db
+python run.py --host 127.0.0.1 --port 8088</code></pre>
+      <p>Open <code>http://127.0.0.1:8088</code>. On Linux use <code>python3</code> if <code>python</code> is unavailable. Dev mode: <code>python run.py --dev</code>.</p>
+
+      <h2>2. Sync intelligence</h2>
+      <ol>
+        <li>Optional: place a licensed <code>all-2.0.tar.gz</code> at the project root (or set path/URL in Settings).</li>
+        <li>Optional: configure HTTP/SOCKS proxy in Settings.</li>
+        <li>On Manage, click <strong>Sync DB</strong>. This updates Exploit-DB, CVE delta, NVD, CWE, CISA KEV, Nuclei, Metasploit, plugin metadata, and the full MSRC Update Guide CVRF set.</li>
+      </ol>
+
+      <h2>3. Search &amp; CVE pages</h2>
+      <p>Use Home search for CVE IDs, products, or exploit titles. CVE pages show severity, patches, Exploit-DB, MSRC KBs, plugin maps, Nuclei/Metasploit hits, YARA/Sigma templates, ATT&amp;CK heuristics, and a unified References list.</p>
+
+      <h2>4. Scan with Nmap NSE</h2>
+      <p>Host assessment is done with the <strong>vulnlocal</strong> NSE script (service detection + offline/online correlation). Download the package from Manage. Offline mode uses <code>vulnlocal.pack/</code> (plain TSV) — the NSE Lua script reads it directly with no <code>sqlite3</code> CLI.</p>
+      <p>Place the script under:</p>
+      <ul>
+        <li>Linux: <code>/usr/share/nmap/scripts/vulnlocal/</code></li>
+        <li>Windows: <code>C:\Program Files (x86)\Nmap\scripts\vulnlocal\</code></li>
+      </ul>
+      <pre class="code-block"><code>nmap --script-updatedb
+nmap -sV --script vulnlocal/vulnlocal \
+  --script-args "vulnlocal.db=/path/to/vulnlocal.pack" &lt;authorized-target&gt;</code></pre>
+      <p>Windows path example (forward slashes):</p>
+      <pre class="code-block"><code>nmap -sV --script vulnlocal/vulnlocal --script-args "vulnlocal.db=D:/path/to/vulnlocal.pack" &lt;authorized-target&gt;</code></pre>
+      <p>Or use online mode against your running app (http or https):</p>
+      <pre class="code-block"><code>nmap -sV --script vulnlocal/vulnlocal \
+  --script-args vulnlocal.api=http://127.0.0.1:8088 &lt;authorized-target&gt;</code></pre>
+
+      <h2>5. Backup &amp; restore</h2>
+      <p>On Manage, use <strong>Backup &amp; restore</strong> to snapshot the local SQLite DB into <code>data/backups/</code> (optionally with <code>settings.json</code>). Restore from a listed backup or upload a <code>.db</code>/<code>.zip</code>. Stop Sync before restoring; a pre-restore snapshot is written automatically.</p>
+
+      <h2>6. CLI helpers</h2>
+      <ul>
+        <li><code>python run.py ingest-all</code> — full local load</li>
+        <li><code>python run.py sync-cve</code> — CVE delta only</li>
+        <li><code>python run.py package-nmap</code> / <code>package-db</code> — release artifacts</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FAQ — vulnlocal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=18" />
+</head>
+<body>
+  {% include '_nav.html' %}
+  <main class="manage-page doc-page">
+    <header class="manage-hero">
+      <h1>FAQ</h1>
+      <p>Common questions about vulnlocal {{ version }}.</p>
+    </header>
+    <section class="manage-card prose">
+      <h2>How do I scan hosts for vulnerabilities?</h2>
+      <p>Use the <strong>vulnlocal NSE script</strong> with Nmap. It detects services (<code>-sV</code>) and correlates versions against the offline <code>vulnlocal.pack</code> index (or the local web API). Download the NSE package from Manage. Offline mode needs no <code>sqlite3</code> CLI — Lua reads the pack directly.</p>
+
+      <h2>Is the offline database encrypted?</h2>
+      <p>No. The NSE offline index is a plaintext <code>vulnlocal.pack/</code> directory (TSV buckets) so Lua can read it with no helper binary. The app DB under <code>data/</code> is plaintext SQLite for search/UI.</p>
+
+      <h2>What are the YARA / Sigma rules on CVE pages?</h2>
+      <p>Heuristic detection templates for blue teams: YARA for EDR file/memory hunting, Sigma for SIEM correlation. They are generated from local CVE / Exploit-DB / Metasploit metadata and must be tuned before production.</p>
+
+      <h2>Where does Microsoft patch data come from?</h2>
+      <p>From the official MSRC CVRF API (<a href="https://api.msrc.microsoft.com/cvrf/v3.0/swagger/v3/swagger.json" target="_blank" rel="noopener">swagger</a>) that powers the <a href="https://msrc.microsoft.com/update-guide" target="_blank" rel="noopener">Security Update Guide</a> — including year indexes, monthly <code>cvrf/{yyyy-Mmm}</code> documents, optional <a href="https://msrc.microsoft.com/csaf" target="_blank" rel="noopener">CSAF</a> equivalents, and the Update Guide <a href="https://api.msrc.microsoft.com/update-guide/rss" target="_blank" rel="noopener">RSS</a> for recent changes. Sync DB stores bulletin years offline in SQLite (not HTML scrape). The Guide lists Microsoft Security Update Guide CVEs (monthly Patch Tuesday + out-of-band), not every CVE ever published by MITRE. Home shows the latest monthly Patch Tuesday set with Publicly disclosed / Exploited Yes/No from MSRC threat metadata.</p>
+
+      <h2>How do I keep data current?</h2>
+      <p>Open <strong>Manage → Sync DB</strong>. Configure proxy and source URLs under <strong>Settings</strong> if needed.</p>
+
+      <h2>Does the app crawl Exploit-DB or CVE.org pages?</h2>
+      <p>No. It uses official bulk archives / JSON APIs only.</p>
+    </section>
+  </main>
+</body>
+</html>

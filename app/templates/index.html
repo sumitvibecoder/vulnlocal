@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>vulnlocal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=24" />
+</head>
+<body>
+  {% include '_nav.html' %}
+
+  <section class="search-stage" id="stage">
+    <p class="brand">vulnlocal</p>
+    <p class="tagline">Offline CVE &amp; Exploit-DB intelligence for exact service versions</p>
+
+    {% set ov = stats.overview or {} %}
+    {% set vuln = ov.vulnerabilities or {} %}
+    <div class="home-overview" id="home-overview" aria-label="Database overview">
+      <div class="overview-panel">
+        <div class="overview-label">Affected Products</div>
+        <div class="overview-value" id="ov-products">{{ "{:,}".format(ov.affected_products or 0) }}</div>
+      </div>
+      <div class="overview-panel">
+        <div class="overview-label">Threat Categories</div>
+        <div class="overview-value" id="ov-categories">{{ "{:,}".format(ov.threat_categories or 0) }}</div>
+      </div>
+      <div class="overview-panel overview-vulns">
+        <div class="overview-label">Vulnerabilities</div>
+        <div class="overview-value" id="ov-vulns-total">{{ "{:,}".format(vuln.total or vuln.rated or 0) }}</div>
+        <div class="severity-row" aria-label="Severity breakdown">
+          <div class="sev crit"><strong id="ov-crit">{{ "{:,}".format(vuln.critical or 0) }}</strong> Critical</div>
+          <div class="sev high"><strong id="ov-high">{{ "{:,}".format(vuln.high or 0) }}</strong> High</div>
+          <div class="sev med"><strong id="ov-med">{{ "{:,}".format(vuln.medium or 0) }}</strong> Medium</div>
+          <div class="sev low"><strong id="ov-low">{{ "{:,}".format(vuln.low or 0) }}</strong> Low</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="home-visual" id="home-visual" aria-label="Vulnerability visuals">
+      <div class="visual-panel">
+        <h2>Severity distribution</h2>
+        <div class="sev-stack" id="sev-stack" title="Rated vulnerabilities by severity">
+          {% if visual.rated > 0 %}
+          <span class="seg crit" id="seg-crit" style="flex: {{ visual.critical }}" title="Critical {{ '{:,}'.format(visual.critical) }}"></span>
+          <span class="seg high" id="seg-high" style="flex: {{ visual.high }}" title="High {{ '{:,}'.format(visual.high) }}"></span>
+          <span class="seg med" id="seg-med" style="flex: {{ visual.medium }}" title="Medium {{ '{:,}'.format(visual.medium) }}"></span>
+          <span class="seg low" id="seg-low" style="flex: {{ visual.low }}" title="Low {{ '{:,}'.format(visual.low) }}"></span>
+          {% else %}
+          <span class="seg empty" id="seg-empty" style="flex: 1"></span>
+          {% endif %}
+        </div>
+        <div class="sev-bars" id="sev-bars">
+          <div class="sev-bar-row">
+            <span class="lbl crit">Critical</span>
+            <div class="bar-track"><span class="bar crit" id="bar-crit" style="width: {{ visual.bar.critical }}%"></span></div>
+            <span class="num" id="num-crit">{{ "{:,}".format(visual.critical) }}</span>
+          </div>
+          <div class="sev-bar-row">
+            <span class="lbl high">High</span>
+            <div class="bar-track"><span class="bar high" id="bar-high" style="width: {{ visual.bar.high }}%"></span></div>
+            <span class="num" id="num-high">{{ "{:,}".format(visual.high) }}</span>
+          </div>
+          <div class="sev-bar-row">
+            <span class="lbl med">Medium</span>
+            <div class="bar-track"><span class="bar med" id="bar-med" style="width: {{ visual.bar.medium }}%"></span></div>
+            <span class="num" id="num-med">{{ "{:,}".format(visual.medium) }}</span>
+          </div>
+          <div class="sev-bar-row">
+            <span class="lbl low">Low</span>
+            <div class="bar-track"><span class="bar low" id="bar-low" style="width: {{ visual.bar.low }}%"></span></div>
+            <span class="num" id="num-low">{{ "{:,}".format(visual.low) }}</span>
+          </div>
+        </div>
+        <div class="visual-meta" id="visual-meta">
+          <span id="meta-rated">{{ "{:,}".format(visual.rated) }} rated</span>
+          <span class="sep">·</span>
+          <span id="meta-unrated">{{ "{:,}".format(visual.unrated) }} unrated</span>
+          <span class="sep">·</span>
+          <span id="meta-total">{{ "{:,}".format(visual.total) }} total</span>
+        </div>
+      </div>
+
+      <div class="visual-panel">
+        <h2>Severity mix</h2>
+        <div class="donut-wrap">
+          <svg class="sev-donut" viewBox="0 0 42 42" role="img" aria-label="Severity donut chart">
+            <circle class="donut-bg" cx="21" cy="21" r="15.915"></circle>
+            <circle class="donut-seg crit" id="donut-crit" cx="21" cy="21" r="15.915"
+              stroke-dasharray="{{ visual.pct.critical }} {{ 100 - visual.pct.critical }}"
+              stroke-dashoffset="{{ visual.donut_offset.critical }}"></circle>
+            <circle class="donut-seg high" id="donut-high" cx="21" cy="21" r="15.915"
+              stroke-dasharray="{{ visual.pct.high }} {{ 100 - visual.pct.high }}"
+              stroke-dashoffset="{{ visual.donut_offset.high }}"></circle>
+            <circle class="donut-seg med" id="donut-med" cx="21" cy="21" r="15.915"
+              stroke-dasharray="{{ visual.pct.medium }} {{ 100 - visual.pct.medium }}"
+              stroke-dashoffset="{{ visual.donut_offset.medium }}"></circle>
+            <circle class="donut-seg low" id="donut-low" cx="21" cy="21" r="15.915"
+              stroke-dasharray="{{ visual.pct.low }} {{ 100 - visual.pct.low }}"
+              stroke-dashoffset="{{ visual.donut_offset.low }}"></circle>
+            <text x="21" y="20.2" text-anchor="middle" class="donut-center-value" id="donut-center">{{ "{:,}".format(visual.rated) }}</text>
+            <text x="21" y="24.8" text-anchor="middle" class="donut-center-label">rated</text>
+          </svg>
+          <ul class="donut-legend" id="donut-legend">
+            <li><i class="crit"></i> Critical <em id="pct-crit">{{ visual.pct.critical }}%</em></li>
+            <li><i class="high"></i> High <em id="pct-high">{{ visual.pct.high }}%</em></li>
+            <li><i class="med"></i> Medium <em id="pct-med">{{ visual.pct.medium }}%</em></li>
+            <li><i class="low"></i> Low <em id="pct-low">{{ visual.pct.low }}%</em></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="visual-panel">
+        <h2>Threat categories</h2>
+        <div class="cat-bars" id="cat-bars">
+        {% if visual.categories %}
+          {% for cat in visual.categories %}
+          <div class="sev-bar-row">
+            <span class="lbl">{{ cat.name }}</span>
+            <div class="bar-track"><span class="bar cat" style="width: {{ cat.width }}%"></span></div>
+            <span class="num">{{ "{:,}".format(cat.count) }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+        <p class="empty-inline">Sync CVE List + Exploit-DB to populate categories.</p>
+        {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <form id="search-form" class="search-form" autocomplete="off" role="search">
+      <input
+        id="q"
+        name="q"
+        type="search"
+        placeholder="Product and version — e.g. OpenSSH 7.2, Apache 2.4.49"
+        autofocus
+        spellcheck="false"
+      />
+    </form>
+
+    <div class="home-latest" id="home-latest" aria-label="Latest releases">
+      <section class="latest-panel patch-tuesday-panel">
+        <h2>Microsoft Patch Tuesday</h2>
+        {% if patch_tuesday and patch_tuesday.bulletin %}
+        {% set b = patch_tuesday.bulletin %}
+        <p class="hint">
+          {{ b.title }} · released {{ b.initial_release or '—' }}
+          · {{ "{:,}".format(b.vuln_count or 0) }} CVEs
+          {% if b.critical %} · Critical {{ b.critical }}{% endif %}
+          {% if b.important %} · Important {{ b.important }}{% endif %}
+          —
+          <a href="{{ b.guide_url }}" target="_blank" rel="noopener">Update Guide</a>
+        </p>
+        {% if patch_tuesday.cves %}
+        <div class="table-wrap patch-tuesday-wrap">
+          <table class="cve-table latest-table patch-tuesday-table">
+            <thead>
+              <tr>
+                <th class="col-cve">CVE</th>
+                <th>Severity</th>
+                <th>Impact</th>
+                <th class="col-title">Title</th>
+                <th class="col-flag">Disclosed</th>
+                <th class="col-flag">Exploited</th>
+                <th>KB</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in patch_tuesday.cves %}
+              <tr>
+                <td class="col-cve"><a href="/cve/{{ row.cve_id }}">{{ row.cve_id }}</a></td>
+                <td class="sev-{{ (row.severity or 'unknown')|lower }}">
+                  {{ row.severity or '—' }}{% if row.cvss_score is not none %} {{ '%.1f'|format(row.cvss_score) }}{% endif %}
+                </td>
+                <td>{{ row.impact or '—' }}</td>
+                <td class="col-title" title="{{ row.title or '' }}">{{ row.title or '—' }}</td>
+                <td class="col-flag flag-{{ (row.publicly_disclosed or 'unknown')|lower }}">{{ row.publicly_disclosed or '—' }}</td>
+                <td class="col-flag flag-{{ (row.exploited or 'unknown')|lower }}">{{ row.exploited or '—' }}</td>
+                <td class="mono col-kb">
+                  {% if row.kb_patches %}
+                    {% for p in row.kb_patches %}
+                    <a href="{{ p.url }}" target="_blank" rel="noopener" title="Microsoft patch {{ p.kb }}">{{ p.kb }}</a>{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                  {% elif row.kbs %}
+                    {{ row.kbs }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="empty-inline">Bulletin {{ b.update_id }} has no CVE rows yet.</p>
+        {% endif %}
+        {% else %}
+        <p class="hint">Monthly Microsoft security release (second Tuesday) from the offline MSRC CVRF mirror.</p>
+        <p class="empty-inline">No Patch Tuesday bulletins indexed yet. Run Sync DB (MSRC Update Guide).</p>
+        {% endif %}
+      </section>
+
+      <section class="latest-panel cves-panel">
+        <h2>Latest CVEs</h2>
+        <p class="hint">Recent CVEs with vendor / product and versions (spread across vendors so one feed does not drown out others).</p>
+        {% if latest and latest.cves %}
+        <div class="table-wrap">
+          <table class="cve-table latest-table">
+            <thead>
+              <tr>
+                <th class="col-cve">CVE</th>
+                <th>Published</th>
+                <th>Severity</th>
+                <th class="col-products">Vendor / Product</th>
+                <th class="col-versions">Versions</th>
+                <th>EDB</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in latest.cves %}
+              <tr>
+                <td class="col-cve mono"><a href="/cve/{{ row.cve_id }}">{{ row.cve_id }}</a></td>
+                <td class="mono">{{ (row.date_published or '—')[:10] }}</td>
+                <td class="sev-{{ (row.severity or 'unknown')|lower }}">
+                  {{ row.severity or '—' }}{% if row.cvss_score is not none %} {{ '%.1f'|format(row.cvss_score) }}{% endif %}
+                </td>
+                <td class="col-products">{{ row.products or '—' }}</td>
+                <td class="mono col-versions">{{ row.versions or '—' }}</td>
+                <td>{% if row.edb_count %}{{ row.edb_count }}{% else %}—{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="empty-inline">No published CVEs in the local database yet. Run Sync DB.</p>
+        {% endif %}
+      </section>
+
+      <section class="latest-panel exploits-panel">
+        <h2>Latest exploits</h2>
+        <p class="hint">Recent Exploit-DB entries (spread across platforms so Windows and others still appear).</p>
+        {% if latest and latest.exploits %}
+        <div class="table-wrap">
+          <table class="cve-table latest-table">
+            <thead>
+              <tr>
+                <th class="col-edb">EDB</th>
+                <th>Date</th>
+                <th>Platform</th>
+                <th>Type</th>
+                <th class="col-title">Title</th>
+                <th class="col-cve">CVE</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in latest.exploits %}
+              <tr>
+                <td class="col-edb mono">
+                  {% if row.cves %}
+                  {% set first_cve = row.cves.split(',')[0]|trim %}
+                  <a href="/cve/{{ first_cve }}#edb-{{ row.edb_id }}">EDB-{{ row.edb_id }}</a>
+                  {% else %}
+                  EDB-{{ row.edb_id }}
+                  {% endif %}
+                </td>
+                <td class="mono">{{ (row.date_pub or '—')[:10] }}</td>
+                <td>{{ row.platform or '—' }}</td>
+                <td>{{ row.type or '—' }}</td>
+                <td class="col-title">{{ row.title or '—' }}</td>
+                <td class="col-cve mono">
+                  {% if row.cves %}
+                    {% for cid in row.cves.split(',')[:3] %}
+                    <a href="/cve/{{ cid|trim }}">{{ cid|trim }}</a>{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                  {% else %}—{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="empty-inline">No Exploit-DB entries loaded yet. Run Sync DB.</p>
+        {% endif %}
+      </section>
+    </div>
+
+    <div id="query-meta" class="query-meta" hidden></div>
+    <div id="results" class="results" aria-live="polite"></div>
+  </section>
+
+  <script src="{{ url_for('static', filename='app.js') }}?v=8"></script>
+</body>
+</html>
