@@ -4,7 +4,7 @@
 
 Mirrors **official** bulk/JSON feeds only (no HTML scraping). For authorized research on systems you own or have permission to test.
 
-[Credits](CREDITS.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) · [MIT License](LICENSE)
+[Credits](CREDITS.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) · [MIT License](LICENSE) · [SECURITY](SECURITY.md)
 
 ## Screenshots
 
